@@ -13,12 +13,25 @@ export async function apiFetch<T>(endpoint: string, options?: RequestInit): Prom
   if (IS_DEMO_MODE) {
     throw new Error('Running in offline demo mode. Mock services will resolve local data.')
   }
+
+  // Retrieve token if stored
+  let token: string | null = null
+  if (typeof window !== 'undefined') {
+    token = localStorage.getItem('infrascan_auth_token')
+  }
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options?.headers as Record<string, string>),
+  }
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
   const res = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
+    headers,
   })
   if (!res.ok) {
     const errorText = await res.text()

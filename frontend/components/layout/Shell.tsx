@@ -26,9 +26,10 @@ import {
   CircleHelp,
   CheckCircle2,
   Clock3,
+  LogOut,
 } from 'lucide-react'
 import { DEMO_NOTIFICATIONS, DEMO_USERS } from '@/lib/api/mock-data'
-import { UserRole } from '@/types'
+import { User, UserRole } from '@/types'
 
 export type NavItemKey =
   | 'Dashboard'
@@ -49,14 +50,25 @@ interface ShellProps {
   currentTab: NavItemKey
   onSelectTab: (tab: NavItemKey) => void
   onOpenNewInspection: () => void
+  currentUser?: User
+  onLogout?: () => void
+  onSwitchRole?: (role: UserRole) => void
   children: React.ReactNode
 }
 
-export function Shell({ currentTab, onSelectTab, onOpenNewInspection, children }: ShellProps) {
+export function Shell({
+  currentTab,
+  onSelectTab,
+  onOpenNewInspection,
+  currentUser = DEMO_USERS[0],
+  onLogout,
+  onSwitchRole,
+  children,
+}: ShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [notifications, setNotifications] = useState(DEMO_NOTIFICATIONS)
-  const [selectedRole, setSelectedRole] = useState<UserRole>('Infrastructure Manager')
+  const [selectedRole, setSelectedRole] = useState<UserRole>(currentUser.role || 'Infrastructure Manager')
   const [roleMenuOpen, setRoleMenuOpen] = useState(false)
 
   const unreadCount = notifications.filter((n) => !n.isRead).length
@@ -176,17 +188,22 @@ export function Shell({ currentTab, onSelectTab, onOpenNewInspection, children }
               className="profile cursor-pointer hover:bg-slate-50 rounded-lg p-1"
               onClick={() => setRoleMenuOpen(!roleMenuOpen)}
             >
-              <div className="avatar">JS</div>
+              <div className="avatar">{currentUser.avatar || 'IS'}</div>
               <div>
-                <b>Jordan Smith, PE</b>
+                <b>{currentUser.name}</b>
                 <small>{selectedRole}</small>
               </div>
               <ChevronDown />
             </div>
 
             {roleMenuOpen && (
-              <div className="absolute bottom-12 left-0 right-0 bg-white border border-slate-200 rounded-lg shadow-lg p-2 z-30">
-                <p className="text-[10px] font-bold text-slate-400 px-2 py-1 uppercase">
+              <div className="absolute bottom-12 left-0 right-0 bg-white border border-slate-200 rounded-lg shadow-xl p-2 z-30">
+                <div className="px-2 py-1.5 border-b border-slate-100 mb-1">
+                  <p className="text-[11px] font-bold text-slate-800 leading-tight">{currentUser.name}</p>
+                  <p className="text-[10px] text-slate-500 truncate">{currentUser.email}</p>
+                </div>
+
+                <p className="text-[9px] font-bold text-slate-400 px-2 py-1 uppercase tracking-wider">
                   Simulate Role
                 </p>
                 {(
@@ -200,17 +217,33 @@ export function Shell({ currentTab, onSelectTab, onOpenNewInspection, children }
                 ).map((role) => (
                   <button
                     key={role}
-                    className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-blue-50 hover:text-blue-600 ${
+                    className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-blue-50 hover:text-blue-600 transition ${
                       selectedRole === role ? 'font-bold text-blue-600 bg-blue-50/60' : 'text-slate-700'
                     }`}
                     onClick={() => {
                       setSelectedRole(role)
+                      if (onSwitchRole) onSwitchRole(role)
                       setRoleMenuOpen(false)
                     }}
                   >
                     {role}
                   </button>
                 ))}
+
+                {onLogout && (
+                  <div className="pt-1 mt-1 border-t border-slate-100">
+                    <button
+                      onClick={() => {
+                        setRoleMenuOpen(false)
+                        onLogout()
+                      }}
+                      className="w-full text-left px-2 py-1.5 text-xs rounded text-red-600 hover:bg-red-50 flex items-center gap-1.5 font-medium transition cursor-pointer"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -263,7 +296,24 @@ export function Shell({ currentTab, onSelectTab, onOpenNewInspection, children }
               <CircleHelp /> Help
             </button>
 
-            <div className="top-avatar">JS</div>
+            <div 
+              className="top-avatar cursor-pointer" 
+              title={`${currentUser.name} (${selectedRole})`}
+              onClick={() => setRoleMenuOpen(!roleMenuOpen)}
+            >
+              {currentUser.avatar || 'IS'}
+            </div>
+
+            {onLogout && (
+              <button
+                className="icon-button text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
+                onClick={onLogout}
+                title="Sign Out"
+                aria-label="Sign Out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
           {/* Notifications Dropdown */}
