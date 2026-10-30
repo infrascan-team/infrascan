@@ -1,0 +1,73 @@
+{
+  "geometry": {
+    "unit": "px",
+    "calibrated": false,
+    "num_cracks": 1,
+    "crack_density_pct": 1.594,
+    "total_crack_area_px": 2759,
+    "total_length_px": 611.2,
+    "max_width_px": 7.0,
+    "width_p95_px": 5.39,
+    "cracks": [
+      {
+        "crack_id": 1,
+        "length_px": 611.1665222413704,
+        "avg_width_px": 4.067102432250977,
+        "max_width_px": 7.0,
+        "area_px": 2759,
+        "orientation_deg": 89.76436895161196,
+        "orientation_label": "vertical/longitudinal",
+        "branch_points": 3,
+        "end_points": 3,
+        "bbox": [
+          133,
+          8,
+          145,
+          406
+        ],
+        "width_p95_px": 5.393799781799316,
+        "length_mm": null,
+        "avg_width_mm": null,
+        "max_width_mm": null,
+        "width_uncertainty_mm": null
+      }
+    ]
+  },
+  "severity": {
+    "level": 2,
+    "label": "Moderate Damage",
+    "score": 2.1,
+    "confidence": 0.168,
+    "explanation": [
+      "No scale calibration: crack width (95th percentile) 5.4px, max 7.0px (1.30% of image) -> width score 3/4 (pixel-space estimate)",
+      "Crack density 1.59% -> density score 2/4",
+      "Crack length density 3.53 -> length score 2/4",
+      "3 branch points across 1 crack(s) -> branching score 1/4"
+    ],
+    "needs_engineer_review": true
+  },
+  "priority": {
+    "priority_level": 3,
+    "priority": "High Priority",
+    "alert_level": "High",
+    "follow_up_days": 30,
+    "recommended_actions": [
+      "Assign maintenance work order.",
+      "Engineer review of AI findings.",
+      "Shorten inspection interval.",
+      "Low model confidence: capture better/calibrated images and re-run."
+    ],
+    "rationale": [
+      "Base from severity 'Moderate Damage' -> level 2",
+      "Structure type 'bridge' (safety-critical) -> +1"
+    ],
+    "disclaimer": "AI-assisted visual assessment only. Not a structural safety evaluation; qualified engineering review is required for Severe/Critical findings."
+  },
+  "progression": null,
+  "meta": {
+    "infrastructure_type": "bridge",
+    "asset_importance": "medium",
+    "model_confidence": 0.21037477254867554,
+    "scale_mm_per_pixel": null
+  }
+}

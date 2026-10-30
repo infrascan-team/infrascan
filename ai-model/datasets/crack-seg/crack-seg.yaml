@@ -1,0 +1,7 @@
+path: 'C:/Users/Admin/IdeaProjects/InfraScan-CV/datasets/crack-seg'
+train: images/train
+val: images/val
+test: images/test
+
+names:
+  0: crack
