@@ -23,4 +23,4 @@ class Asset(Base):
     maintenance_history_count = Column(Integer, default=0)
     notes = Column(String, default="")
     image_url = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))

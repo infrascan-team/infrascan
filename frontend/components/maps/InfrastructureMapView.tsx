@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { DEMO_ASSETS } from '@/lib/api/mock-data'
 import { InfrastructureAsset } from '@/types'
+import { AssetsService } from '@/lib/api/assets.service'
 
 interface InfrastructureMapViewProps {
   onNavigate: (tab: any, params?: any) => void
@@ -24,12 +25,24 @@ export function InfrastructureMapView({ onNavigate }: InfrastructureMapViewProps
   const mapInstanceRef = useRef<any>(null)
   const markersRef = useRef<any[]>([])
 
+  const [assets, setAssets] = useState<InfrastructureAsset[]>(DEMO_ASSETS)
   const [search, setSearch] = useState('')
   const [selectedType, setSelectedType] = useState<string>('ALL')
   const [selectedSeverity, setSelectedSeverity] = useState<string>('ALL')
   const [selectedAsset, setSelectedAsset] = useState<InfrastructureAsset | null>(DEMO_ASSETS[0])
 
-  const filteredAssets = DEMO_ASSETS.filter((asset) => {
+  useEffect(() => {
+    AssetsService.getAll()
+      .then((data) => {
+        if (data && data.length > 0) {
+          setAssets(data)
+          setSelectedAsset(data[0])
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  const filteredAssets = assets.filter((asset) => {
     const matchesSearch =
       asset.name.toLowerCase().includes(search.toLowerCase()) ||
       asset.address.toLowerCase().includes(search.toLowerCase())

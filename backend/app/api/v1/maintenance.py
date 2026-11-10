@@ -1,6 +1,8 @@
 import datetime
+import csv
+import io
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models.maintenance import MaintenanceWorkOrder
@@ -60,6 +62,49 @@ def create_work_order(data_in: MaintenanceWorkOrderCreate, db: Session = Depends
     db.commit()
     db.refresh(item)
     return item
+
+@router.get("/export/csv")
+def export_work_orders_csv(db: Session = Depends(get_db)):
+    """
+    Export all maintenance work orders as CSV.
+    """
+    orders = db.query(MaintenanceWorkOrder).all()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Order ID", "Title", "Inspection ID", "Asset ID", "Asset Name", "Priority", "Status", "Assigned Team", "Assigned Engineer", "Created At", "Due Date"])
+    for wo in orders:
+        writer.writerow([
+            wo.id, wo.title, wo.inspection_id, wo.asset_id, wo.asset_name,
+            wo.priority, wo.status, wo.assigned_team, wo.assigned_engineer,
+            wo.created_at, wo.due_date
+        ])
+    return Response(
+        content=output.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=InfraScan_Work_Orders_Register.csv"}
+    )
+
+@router.get("/{work_order_id}", response_model=MaintenanceWorkOrderResponse)
+def get_work_order(work_order_id: str, db: Session = Depends(get_db)):
+    """
+    Get detailed information for a single maintenance work order.
+    """
+    item = db.query(MaintenanceWorkOrder).filter(MaintenanceWorkOrder.id == work_order_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    return item
+
+@router.delete("/{work_order_id}")
+def delete_work_order(work_order_id: str, db: Session = Depends(get_db)):
+    """
+    Delete a maintenance work order.
+    """
+    item = db.query(MaintenanceWorkOrder).filter(MaintenanceWorkOrder.id == work_order_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    db.delete(item)
+    db.commit()
+    return {"message": f"Work order {work_order_id} deleted successfully", "id": work_order_id}
 
 @router.patch("/{work_order_id}/status", response_model=MaintenanceWorkOrderResponse)
 def update_work_order_status(

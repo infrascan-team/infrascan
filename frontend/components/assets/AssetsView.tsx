@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Building2,
   Calendar,
@@ -22,7 +22,10 @@ import {
   Layers,
 } from 'lucide-react'
 import { DEMO_ASSETS, DEMO_INSPECTIONS, DEMO_WORK_ORDERS } from '@/lib/api/mock-data'
-import { InfrastructureAsset, InfrastructureType } from '@/types'
+import { InfrastructureAsset, InfrastructureType, Inspection, MaintenanceWorkOrder } from '@/types'
+import { AssetsService } from '@/lib/api/assets.service'
+import { InspectionsService } from '@/lib/api/inspections.service'
+import { MaintenanceService } from '@/lib/api/maintenance.service'
 
 const ASSET_TYPES: InfrastructureType[] = [
   'Bridge',
@@ -42,6 +45,8 @@ interface AssetsViewProps {
 
 export function AssetsView({ onNavigate, onOpenNewInspectionForAsset }: AssetsViewProps) {
   const [assets, setAssets] = useState<InfrastructureAsset[]>(DEMO_ASSETS)
+  const [allInspections, setAllInspections] = useState<Inspection[]>(DEMO_INSPECTIONS)
+  const [allWorkOrders, setAllWorkOrders] = useState<MaintenanceWorkOrder[]>(DEMO_WORK_ORDERS)
   const [search, setSearch] = useState('')
   const [selectedType, setSelectedType] = useState<string>('ALL')
   const [selectedCondition, setSelectedCondition] = useState<string>('ALL')
@@ -68,6 +73,24 @@ export function AssetsView({ onNavigate, onOpenNewInspectionForAsset }: AssetsVi
     notes: '',
   })
 
+  useEffect(() => {
+    AssetsService.getAll()
+      .then((data) => {
+        if (data && data.length > 0) setAssets(data)
+      })
+      .catch(() => {})
+    InspectionsService.getAll()
+      .then((data) => {
+        if (data && data.length > 0) setAllInspections(data)
+      })
+      .catch(() => {})
+    MaintenanceService.getAll()
+      .then((data) => {
+        if (data && data.length > 0) setAllWorkOrders(data)
+      })
+      .catch(() => {})
+  }, [])
+
   const filteredAssets = assets.filter((asset) => {
     const matchesSearch =
       asset.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -79,30 +102,38 @@ export function AssetsView({ onNavigate, onOpenNewInspectionForAsset }: AssetsVi
     return matchesSearch && matchesType && matchesCondition
   })
 
-  const handleCreateAsset = (e: React.FormEvent) => {
+  const handleCreateAsset = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newAsset.name || !newAsset.address) {
       alert('Please fill in asset name and address')
       return
     }
-    const created: InfrastructureAsset = {
+    const payload = {
       ...newAsset,
-      id: `AST-${newAsset.type.slice(0, 3).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`,
       lastInspectionDate: new Date().toISOString().split('T')[0],
       nextScheduledInspection: new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0],
-      openFindingsCount: 0,
-      maintenanceHistoryCount: 0,
     }
-    setAssets([created, ...assets])
+    try {
+      const created = await AssetsService.create(payload)
+      setAssets([created, ...assets])
+    } catch {
+      const fallbackAsset: InfrastructureAsset = {
+        ...payload,
+        id: `AST-${newAsset.type.slice(0, 3).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`,
+        openFindingsCount: 0,
+        maintenanceHistoryCount: 0,
+      }
+      setAssets([fallbackAsset, ...assets])
+    }
     setShowCreateModal(false)
   }
 
   // Linked inspections & work orders for detail modal
   const assetInspections = selectedAsset
-    ? DEMO_INSPECTIONS.filter((i) => i.assetId === selectedAsset.id)
+    ? allInspections.filter((i) => i.assetId === selectedAsset.id)
     : []
   const assetWorkOrders = selectedAsset
-    ? DEMO_WORK_ORDERS.filter((w) => w.assetId === selectedAsset.id)
+    ? allWorkOrders.filter((w) => w.assetId === selectedAsset.id)
     : []
 
   return (

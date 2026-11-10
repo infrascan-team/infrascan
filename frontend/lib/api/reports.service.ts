@@ -1,25 +1,29 @@
 import { InspectionReport } from '@/types'
 import { DEMO_REPORTS } from './mock-data'
-import { IS_DEMO_MODE, apiFetch } from './client'
+import { apiFetch } from './client'
 
 let localReports: InspectionReport[] = [...DEMO_REPORTS]
 
 export const ReportsService = {
   async getAll(): Promise<InspectionReport[]> {
-    if (IS_DEMO_MODE) {
-      return Promise.resolve([...localReports])
+    try {
+      const res = await apiFetch<InspectionReport[]>('/api/v1/reports')
+      if (res.data && Array.isArray(res.data) && res.data.length > 0) {
+        return res.data
+      }
+      return [...localReports]
+    } catch {
+      return [...localReports]
     }
-    const res = await apiFetch<InspectionReport[]>('/api/v1/reports')
-    return res.data
   },
 
   async getById(id: string): Promise<InspectionReport | null> {
-    if (IS_DEMO_MODE) {
-      const report = localReports.find((r) => r.id === id) || null
-      return Promise.resolve(report)
+    try {
+      const res = await apiFetch<InspectionReport>(`/api/v1/reports/${id}`)
+      return res.data
+    } catch {
+      return localReports.find((r) => r.id === id) || null
     }
-    const res = await apiFetch<InspectionReport>(`/api/v1/reports/${id}`)
-    return res.data
   },
 
   async generate(data: Omit<InspectionReport, 'id' | 'generatedAt'>): Promise<InspectionReport> {
@@ -28,14 +32,25 @@ export const ReportsService = {
       id: `RPT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
       generatedAt: new Date().toISOString(),
     }
-    if (IS_DEMO_MODE) {
+    try {
+      const res = await apiFetch<InspectionReport>('/api/v1/reports/generate', {
+        method: 'POST',
+        body: JSON.stringify(newReport),
+      })
+      localReports = [res.data, ...localReports]
+      return res.data
+    } catch {
       localReports = [newReport, ...localReports]
-      return Promise.resolve(newReport)
+      return newReport
     }
-    const res = await apiFetch<InspectionReport>('/api/v1/reports/generate', {
-      method: 'POST',
-      body: JSON.stringify(newReport),
-    })
-    return res.data
+  },
+
+  async delete(id: string): Promise<void> {
+    try {
+      await apiFetch(`/api/v1/reports/${id}`, { method: 'DELETE' })
+    } catch (err) {
+      console.warn('Report delete error:', err)
+    }
+    localReports = localReports.filter((r) => r.id !== id)
   },
 }

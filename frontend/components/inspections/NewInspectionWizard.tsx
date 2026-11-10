@@ -23,7 +23,7 @@ import { InfrastructureAsset, Inspection } from '@/types'
 interface NewInspectionWizardProps {
   initialAsset?: InfrastructureAsset | null
   onClose: () => void
-  onSubmitInspection: (inspectionData: Partial<Inspection>) => void
+  onSubmitInspection: (inspectionData: Partial<Inspection>, files?: File[]) => void
 }
 
 interface UploadedFilePreview {
@@ -78,6 +78,7 @@ export function NewInspectionWizard({
       rotation: 0,
     },
   ])
+  const [realFiles, setRealFiles] = useState<File[]>([])
 
   // Step 5: Engineer Confirmation
   const [confirmedAccuracy, setConfirmedAccuracy] = useState(false)
@@ -86,7 +87,9 @@ export function NewInspectionWizard({
 
   const handleSimulatedDrop = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const newItems: UploadedFilePreview[] = Array.from(e.target.files).map((f, idx) => ({
+      const selected = Array.from(e.target.files)
+      setRealFiles((prev) => [...prev, ...selected])
+      const newItems: UploadedFilePreview[] = selected.map((f, idx) => ({
         id: `upload-${Date.now()}-${idx}`,
         name: f.name,
         size: f.size,
@@ -134,7 +137,7 @@ export function NewInspectionWizard({
         findings: [],
       })),
     }
-    onSubmitInspection(inspectionData)
+    onSubmitInspection(inspectionData, realFiles)
   }
 
   return (

@@ -6,20 +6,21 @@ let localAssets: InfrastructureAsset[] = [...DEMO_ASSETS]
 
 export const AssetsService = {
   async getAll(): Promise<InfrastructureAsset[]> {
-    if (IS_DEMO_MODE) {
-      return Promise.resolve([...localAssets])
+    try {
+      const res = await apiFetch<InfrastructureAsset[]>('/api/v1/assets')
+      return res.data
+    } catch {
+      return [...localAssets]
     }
-    const res = await apiFetch<InfrastructureAsset[]>('/api/v1/assets')
-    return res.data
   },
 
   async getById(id: string): Promise<InfrastructureAsset | null> {
-    if (IS_DEMO_MODE) {
-      const asset = localAssets.find((a) => a.id === id) || null
-      return Promise.resolve(asset)
+    try {
+      const res = await apiFetch<InfrastructureAsset>(`/api/v1/assets/${id}`)
+      return res.data
+    } catch {
+      return localAssets.find((a) => a.id === id) || null
     }
-    const res = await apiFetch<InfrastructureAsset>(`/api/v1/assets/${id}`)
-    return res.data
   },
 
   async create(asset: Omit<InfrastructureAsset, 'id' | 'openFindingsCount' | 'maintenanceHistoryCount'>): Promise<InfrastructureAsset> {
@@ -29,27 +30,38 @@ export const AssetsService = {
       openFindingsCount: 0,
       maintenanceHistoryCount: 0,
     }
-    if (IS_DEMO_MODE) {
+    try {
+      const res = await apiFetch<InfrastructureAsset>('/api/v1/assets', {
+        method: 'POST',
+        body: JSON.stringify(newAsset),
+      })
+      localAssets = [res.data, ...localAssets]
+      return res.data
+    } catch {
       localAssets = [newAsset, ...localAssets]
-      return Promise.resolve(newAsset)
+      return newAsset
     }
-    const res = await apiFetch<InfrastructureAsset>('/api/v1/assets', {
-      method: 'POST',
-      body: JSON.stringify(newAsset),
-    })
-    return res.data
   },
 
   async update(id: string, updates: Partial<InfrastructureAsset>): Promise<InfrastructureAsset> {
-    if (IS_DEMO_MODE) {
+    try {
+      const res = await apiFetch<InfrastructureAsset>(`/api/v1/assets/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(updates),
+      })
+      return res.data
+    } catch {
       localAssets = localAssets.map((a) => (a.id === id ? { ...a, ...updates } : a))
-      const updated = localAssets.find((a) => a.id === id)!
-      return Promise.resolve(updated)
+      return localAssets.find((a) => a.id === id)!
     }
-    const res = await apiFetch<InfrastructureAsset>(`/api/v1/assets/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(updates),
-    })
-    return res.data
+  },
+
+  async delete(id: string): Promise<void> {
+    try {
+      await apiFetch(`/api/v1/assets/${id}`, { method: 'DELETE' })
+    } catch (err) {
+      console.warn('Asset delete error:', err)
+    }
+    localAssets = localAssets.filter((a) => a.id !== id)
   },
 }

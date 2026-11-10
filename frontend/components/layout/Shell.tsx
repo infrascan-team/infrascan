@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Activity,
   AlertTriangle,
@@ -29,7 +29,9 @@ import {
   LogOut,
 } from 'lucide-react'
 import { DEMO_NOTIFICATIONS, DEMO_USERS } from '@/lib/api/mock-data'
-import { User, UserRole } from '@/types'
+import { User, UserRole, NotificationItem } from '@/types'
+import { InspectionsService } from '@/lib/api/inspections.service'
+import { MaintenanceService } from '@/lib/api/maintenance.service'
 
 export type NavItemKey =
   | 'Dashboard'
@@ -72,6 +74,52 @@ export function Shell({
   const [roleMenuOpen, setRoleMenuOpen] = useState(false)
 
   const unreadCount = notifications.filter((n) => !n.isRead).length
+
+  useEffect(() => {
+    Promise.all([
+      InspectionsService.getAll().catch(() => []),
+      MaintenanceService.getAll().catch(() => []),
+    ]).then(([insps, wos]) => {
+      const dynamicNotes: NotificationItem[] = []
+      // Check for recent 2026 inspections
+      const recentInsps = insps.filter((i) => i.id.includes('2026') || (i.date && i.date.includes('2026')))
+      for (const i of recentInsps) {
+        dynamicNotes.push({
+          id: `NOTIF-${i.id}`,
+          category:
+            i.overallSeverity === 'Critical' || i.overallSeverity === 'Severe'
+              ? 'Severe damage identified'
+              : 'Engineering review required',
+          title: `Survey ${i.id} completed for ${i.assetName}`,
+          description: `YOLOv11 segmented ${i.findingsCount || 1} defect finding(s) with ${i.overallSeverity} severity.`,
+          timestamp: 'Just now',
+          isRead: false,
+          severity:
+            i.overallSeverity === 'Critical' || i.overallSeverity === 'Severe' ? 'Critical' : 'Warning',
+          linkTo: 'Analysis Results',
+        })
+      }
+      // Check for recent 2026 work orders
+      const recentWos = wos.filter(
+        (w) => w.id.includes('2026') || (w.createdAt && w.createdAt.includes('2026'))
+      )
+      for (const w of recentWos) {
+        dynamicNotes.push({
+          id: `NOTIF-${w.id}`,
+          category: 'Maintenance task assigned',
+          title: `Work Order ${w.id} issued to ${w.assignedTeam}`,
+          description: `${w.title} (${w.status}) for ${w.assetName}.`,
+          timestamp: 'Today',
+          isRead: false,
+          severity: 'Info',
+          linkTo: 'Maintenance & Work Orders',
+        })
+      }
+      if (dynamicNotes.length > 0) {
+        setNotifications([...dynamicNotes, ...DEMO_NOTIFICATIONS.slice(0, 2)])
+      }
+    })
+  }, [])
 
   const markAllRead = () => {
     setNotifications(notifications.map((n) => ({ ...n, isRead: true })))

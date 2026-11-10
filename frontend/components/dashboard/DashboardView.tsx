@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Activity,
   AlertTriangle,
@@ -19,7 +19,9 @@ import {
 } from 'lucide-react'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { DEMO_ASSETS, DEMO_INSPECTIONS } from '@/lib/api/mock-data'
-import { Inspection } from '@/types'
+import { Inspection, InfrastructureAsset } from '@/types'
+import { InspectionsService } from '@/lib/api/inspections.service'
+import { AssetsService } from '@/lib/api/assets.service'
 
 const activityData = [
   { month: 'Jan', inspections: 18 },
@@ -39,10 +41,25 @@ interface DashboardViewProps {
 }
 
 export function DashboardView({ onNavigate, onOpenNewInspection }: DashboardViewProps) {
+  const [inspections, setInspections] = useState<Inspection[]>(DEMO_INSPECTIONS)
+  const [assets, setAssets] = useState<InfrastructureAsset[]>(DEMO_ASSETS)
   const [search, setSearch] = useState('')
   const [selectedSeverity, setSelectedSeverity] = useState<string>('ALL')
 
-  const filtered = DEMO_INSPECTIONS.filter((item) => {
+  useEffect(() => {
+    InspectionsService.getAll()
+      .then((data) => {
+        if (data && data.length > 0) setInspections(data)
+      })
+      .catch(() => {})
+    AssetsService.getAll()
+      .then((data) => {
+        if (data && data.length > 0) setAssets(data)
+      })
+      .catch(() => {})
+  }, [])
+
+  const filtered = inspections.filter((item) => {
     const matchesSearch = `${item.id} ${item.assetName} ${item.assetType}`
       .toLowerCase()
       .includes(search.toLowerCase())
@@ -50,6 +67,28 @@ export function DashboardView({ onNavigate, onOpenNewInspection }: DashboardView
       selectedSeverity === 'ALL' || item.overallSeverity.toUpperCase() === selectedSeverity
     return matchesSearch && matchesSeverity
   })
+
+  const pendingReviewCount = inspections.filter(
+    (i) => i.status === 'Pending Engineer Review'
+  ).length
+  const highPriorityCount = inspections.filter(
+    (i) => i.priority === 'High' || i.priority === 'Urgent'
+  ).length
+
+  const criticalCount = inspections.filter((i) => i.overallSeverity === 'Critical').length
+  const severeCount = inspections.filter((i) => i.overallSeverity === 'Severe').length
+  const moderateCount = inspections.filter((i) => i.overallSeverity === 'Moderate').length
+  const minorCount = inspections.filter((i) => i.overallSeverity === 'Minor').length
+  const totalFindings = inspections.reduce((acc, i) => acc + (i.findingsCount || 1), 0)
+
+  const attentionList = inspections
+    .filter(
+      (i) =>
+        i.status === 'Pending Engineer Review' ||
+        i.overallSeverity === 'Severe' ||
+        i.overallSeverity === 'Critical'
+    )
+    .slice(0, 3)
 
   return (
     <div className="page-wrap">
@@ -95,8 +134,8 @@ export function DashboardView({ onNavigate, onOpenNewInspection }: DashboardView
           </div>
           <div className="stat-copy">
             <p>Infrastructure assets</p>
-            <strong>{DEMO_ASSETS.length}</strong>
-            <span className="positive">6 Active Critical Assets</span>
+            <strong>{assets.length}</strong>
+            <span className="positive">{assets.filter((a) => a.importance.includes('Critical')).length || 2} Critical Priority</span>
           </div>
         </div>
 
@@ -109,8 +148,8 @@ export function DashboardView({ onNavigate, onOpenNewInspection }: DashboardView
           </div>
           <div className="stat-copy">
             <p>Total inspections</p>
-            <strong>{DEMO_INSPECTIONS.length}</strong>
-            <span className="positive">+18% vs prior month</span>
+            <strong>{inspections.length}</strong>
+            <span className="positive">Active live monitoring</span>
           </div>
         </div>
 
@@ -123,7 +162,7 @@ export function DashboardView({ onNavigate, onOpenNewInspection }: DashboardView
           </div>
           <div className="stat-copy">
             <p>Pending engineer review</p>
-            <strong>2</strong>
+            <strong>{pendingReviewCount}</strong>
             <span className="neutral">Action required</span>
           </div>
         </div>
@@ -137,8 +176,8 @@ export function DashboardView({ onNavigate, onOpenNewInspection }: DashboardView
           </div>
           <div className="stat-copy">
             <p>High-priority findings</p>
-            <strong>7</strong>
-            <span className="text-red-500 text-[9px] font-semibold">1 Critical Pier Spall</span>
+            <strong>{highPriorityCount}</strong>
+            <span className="text-red-500 text-[9px] font-semibold">Priority repair attention</span>
           </div>
         </div>
       </section>
@@ -216,7 +255,7 @@ export function DashboardView({ onNavigate, onOpenNewInspection }: DashboardView
           <div className="donut-wrap">
             <div className="donut">
               <div>
-                <strong>14</strong>
+                <strong>{totalFindings}</strong>
                 <small>Total Defects</small>
               </div>
             </div>
@@ -224,22 +263,22 @@ export function DashboardView({ onNavigate, onOpenNewInspection }: DashboardView
               <div>
                 <i className="dot critical" />
                 <span>Critical</span>
-                <b>1</b>
+                <b>{criticalCount}</b>
               </div>
               <div>
                 <i className="dot severe" />
                 <span>Severe</span>
-                <b>3</b>
+                <b>{severeCount}</b>
               </div>
               <div>
                 <i className="dot moderate" />
                 <span>Moderate</span>
-                <b>4</b>
+                <b>{moderateCount}</b>
               </div>
               <div>
                 <i className="dot minor" />
                 <span>Minor</span>
-                <b>6</b>
+                <b>{minorCount}</b>
               </div>
             </div>
           </div>
@@ -361,36 +400,37 @@ export function DashboardView({ onNavigate, onOpenNewInspection }: DashboardView
               </div>
             </div>
 
-            <div
-              className="attention-item cursor-pointer hover:bg-slate-50 p-2 rounded"
-              onClick={() =>
-                onNavigate('Analysis Results', { inspectionId: 'INSP-2024-0246' })
-              }
-            >
-              <div className="attention-icon red">
-                <AlertTriangle />
-              </div>
-              <div>
-                <strong>Eastside Highway Overpass</strong>
-                <p>7 findings · Severe concrete spalling & exposed rebar</p>
-              </div>
-              <ArrowUpRight />
-            </div>
-
-            <div
-              className="attention-item cursor-pointer hover:bg-slate-50 p-2 rounded"
-              onClick={() =>
-                onNavigate('Analysis Results', { inspectionId: 'INSP-2024-0248' })
-              }
-            >
-              <div className="attention-icon amber">
-                <Clock3 />
-              </div>
-              <div>
-                <strong>North River Bridge</strong>
-                <p>Pending engineer review · 4 crack findings</p>
-              </div>
-              <ArrowUpRight />
+            <div className="space-y-2">
+              {attentionList.map((item) => (
+                <div
+                  key={item.id}
+                  className="attention-item cursor-pointer hover:bg-slate-50 p-2 rounded transition"
+                  onClick={() =>
+                    onNavigate('Analysis Results', { inspectionId: item.id })
+                  }
+                >
+                  <div
+                    className={`attention-icon ${
+                      item.overallSeverity === 'Critical' || item.overallSeverity === 'Severe'
+                        ? 'red'
+                        : 'amber'
+                    }`}
+                  >
+                    {item.overallSeverity === 'Critical' || item.overallSeverity === 'Severe' ? (
+                      <AlertTriangle />
+                    ) : (
+                      <Clock3 />
+                    )}
+                  </div>
+                  <div>
+                    <strong>{item.assetName}</strong>
+                    <p>
+                      {item.id} · {item.overallSeverity} ({item.findingsCount || 1} defect findings)
+                    </p>
+                  </div>
+                  <ArrowUpRight />
+                </div>
+              ))}
             </div>
 
             <button

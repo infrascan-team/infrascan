@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Download,
   Plus,
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { DEMO_USERS } from '@/lib/api/mock-data'
 import { User, UserRole } from '@/types'
+import { UsersService } from '@/lib/api/users.service'
 
 const ROLES: UserRole[] = [
   'Infrastructure Manager',
@@ -36,36 +37,62 @@ export function UsersView() {
     department: 'Civil Infrastructure Division',
   })
 
+  useEffect(() => {
+    UsersService.getAll()
+      .then((data) => {
+        if (data && data.length > 0) setUsers(data)
+      })
+      .catch(() => {})
+  }, [])
+
   const filtered = users.filter((u) =>
     `${u.name} ${u.email} ${u.role} ${u.department}`.toLowerCase().includes(search.toLowerCase())
   )
 
-  const handleRoleChange = (id: string, newRole: UserRole) => {
+  const handleRoleChange = async (id: string, newRole: UserRole) => {
     setUsers(users.map((u) => (u.id === id ? { ...u, role: newRole } : u)))
+    try {
+      await UsersService.updateRole(id, newRole)
+    } catch (e) {
+      console.warn('Role update notice:', e)
+    }
   }
 
-  const handleToggleStatus = (id: string) => {
+  const handleToggleStatus = async (id: string) => {
+    const target = users.find((u) => u.id === id)
+    const newStatus = target?.status === 'Active' ? 'Inactive' : 'Active'
     setUsers(
-      users.map((u) =>
-        u.id === id ? { ...u, status: u.status === 'Active' ? 'Inactive' : 'Active' } : u
-      )
+      users.map((u) => (u.id === id ? { ...u, status: newStatus } : u))
     )
+    try {
+      await UsersService.toggleStatus(id, newStatus)
+    } catch (e) {
+      console.warn('Status toggle notice:', e)
+    }
   }
 
-  const handleCreateUser = (e: React.FormEvent) => {
+  const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newUser.name || !newUser.email) {
       alert('Please enter name and email')
       return
     }
-    const created: User = {
+    const createdPayload: Omit<User, 'id'> = {
       ...newUser,
-      id: `USR-00${users.length + 1}`,
       avatar: newUser.name.slice(0, 2).toUpperCase(),
       status: 'Active',
       lastActive: 'Just now',
     }
-    setUsers([...users, created])
+    try {
+      const created = await UsersService.create(createdPayload)
+      setUsers([created, ...users])
+    } catch {
+      const fallbackUser: User = {
+        ...createdPayload,
+        id: `USR-00${users.length + 1}`,
+      }
+      setUsers([fallbackUser, ...users])
+    }
     setShowInviteModal(false)
   }
 

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Calendar,
   CheckCircle2,
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { DEMO_INSPECTIONS } from '@/lib/api/mock-data'
 import { Inspection, InspectionStatus, DamageSeverity } from '@/types'
+import { InspectionsService } from '@/lib/api/inspections.service'
 
 interface InspectionsViewProps {
   onNavigate: (tab: any, params?: any) => void
@@ -27,6 +28,14 @@ export function InspectionsView({ onNavigate, onOpenNewInspection }: Inspections
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('ALL')
   const [severityFilter, setSeverityFilter] = useState<string>('ALL')
+
+  useEffect(() => {
+    InspectionsService.getAll()
+      .then((data) => {
+        if (data && data.length > 0) setInspections(data)
+      })
+      .catch(() => {})
+  }, [])
 
   const filtered = inspections.filter((insp) => {
     const matchesSearch =

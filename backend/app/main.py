@@ -10,7 +10,8 @@ from app.api.v1.inspections import router as inspections_router
 from app.api.v1.maintenance import router as maintenance_router
 from app.api.v1.models import router as models_router
 from app.api.v1.reports import router as reports_router
-from app.db.session import SessionLocal
+from sqlalchemy import text
+from app.db.session import SessionLocal, engine
 from app.db.init_db import init_db
 
 app = FastAPI(
@@ -61,4 +62,31 @@ def root():
 
 @app.get("/health")
 def health_check():
-    return {"status": "healthy"}
+    db_status = "connected"
+    try:
+        with SessionLocal() as db:
+            db.execute(text("SELECT 1"))
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+
+    storage_writable = os.access(settings.UPLOAD_DIR, os.W_OK)
+
+    return {
+        "status": "healthy" if db_status == "connected" and storage_writable else "degraded",
+        "service": settings.PROJECT_NAME,
+        "version": settings.VERSION,
+        "database": {
+            "status": db_status,
+            "dialect": engine.dialect.name,
+        },
+        "storage": {
+            "upload_dir": settings.UPLOAD_DIR,
+            "writable": storage_writable,
+        }
+    }
+
+@app.get("/ready")
+def readiness_check():
+    with SessionLocal() as db:
+        db.execute(text("SELECT 1"))
+    return {"ready": True}

@@ -19,6 +19,7 @@ import { UsersView } from '@/components/users/UsersView'
 import { SettingsView } from '@/components/settings/SettingsView'
 import { InfrastructureAsset, Inspection, User, UserRole } from '@/types'
 import { DEMO_USERS } from '@/lib/api/mock-data'
+import { InspectionsService } from '@/lib/api/inspections.service'
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User>(DEMO_USERS[0])
@@ -79,9 +80,20 @@ export default function App() {
     setShowWizard(true)
   }
 
-  const handleSubmitInspection = (inspectionData: Partial<Inspection>) => {
+  const handleSubmitInspection = async (inspectionData: Partial<Inspection>, files?: File[]) => {
     setShowWizard(false)
     setShowPreprocessing(true)
+
+    try {
+      const created = await InspectionsService.create(inspectionData)
+      setActiveInspectionId(created.id)
+
+      if (files && files.length > 0) {
+        await InspectionsService.analyzeImage(created.id, files[0])
+      }
+    } catch (err) {
+      console.warn('Backend inference sync notice (fallback to demo data if offline):', err)
+    }
   }
 
   const handlePreprocessingComplete = () => {
@@ -129,7 +141,9 @@ export default function App() {
         />
       )}
 
-      {currentTab === 'Historical Comparison' && <ComparisonView />}
+      {currentTab === 'Historical Comparison' && (
+        <ComparisonView activeInspectionId={activeInspectionId} />
+      )}
 
       {currentTab === 'Assets' && (
         <AssetsView
@@ -144,7 +158,7 @@ export default function App() {
 
       {currentTab === 'Model Performance' && <ModelPerformanceView />}
 
-      {currentTab === 'Reports' && <ReportsView />}
+      {currentTab === 'Reports' && <ReportsView targetInspectionId={activeInspectionId} />}
 
       {currentTab === 'User Management' && <UsersView />}
 

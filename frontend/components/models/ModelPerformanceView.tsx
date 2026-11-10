@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Activity,
   CheckCircle2,
@@ -14,10 +14,22 @@ import {
 } from 'lucide-react'
 import { DEMO_MODELS } from '@/lib/api/mock-data'
 import { ModelVersion } from '@/types'
+import { ModelsService } from '@/lib/api/models.service'
 
 export function ModelPerformanceView() {
   const [models, setModels] = useState<ModelVersion[]>(DEMO_MODELS)
   const [selectedModel, setSelectedModel] = useState<ModelVersion>(DEMO_MODELS[0])
+
+  useEffect(() => {
+    ModelsService.getAll()
+      .then((data) => {
+        if (data && data.length > 0) {
+          setModels(data)
+          setSelectedModel(data[0])
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   return (
     <div className="page-wrap">

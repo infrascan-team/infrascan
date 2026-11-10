@@ -25,7 +25,16 @@ class UserBase(BaseModel):
     avatar: Optional[str] = "IS"
 
 class UserCreate(UserBase):
-    password: str
+    password: Optional[str] = "CivilSafe2024!"
+
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    role: Optional[str] = None
+    department: Optional[str] = None
+    status: Optional[str] = None
+    avatar: Optional[str] = None
+    password: Optional[str] = None
 
 class UserResponse(UserBase):
     id: str

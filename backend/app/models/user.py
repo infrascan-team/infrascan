@@ -13,4 +13,4 @@ class User(Base):
     department = Column(String, default="Civil Infrastructure Division")
     avatar = Column(String, default="IS")
     status = Column(String, default="Active")
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))

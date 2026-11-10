@@ -6,25 +6,27 @@ let localInspections: Inspection[] = [...DEMO_INSPECTIONS]
 
 export const InspectionsService = {
   async getAll(): Promise<Inspection[]> {
-    if (IS_DEMO_MODE) {
-      return Promise.resolve([...localInspections])
+    try {
+      const res = await apiFetch<Inspection[]>('/api/v1/inspections')
+      return res.data
+    } catch {
+      return [...localInspections]
     }
-    const res = await apiFetch<Inspection[]>('/api/v1/inspections')
-    return res.data
   },
 
   async getById(id: string): Promise<Inspection | null> {
-    if (IS_DEMO_MODE) {
+    try {
+      const res = await apiFetch<Inspection>(`/api/v1/inspections/${id}`)
+      return res.data
+    } catch {
       const item = localInspections.find((i) => i.id === id) || null
-      return Promise.resolve(item)
+      return item
     }
-    const res = await apiFetch<Inspection>(`/api/v1/inspections/${id}`)
-    return res.data
   },
 
   async create(data: Partial<Inspection>): Promise<Inspection> {
     const newInsp: Inspection = {
-      id: `INSP-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+      id: data.id || `INSP-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
       assetId: data.assetId || '',
       assetName: data.assetName || 'Unspecified Asset',
       assetType: data.assetType || 'Bridge',
@@ -45,13 +47,37 @@ export const InspectionsService = {
       preprocessingStage: 'Completed',
     }
 
-    if (IS_DEMO_MODE) {
+    try {
+      const res = await apiFetch<Inspection>('/api/v1/inspections', {
+        method: 'POST',
+        body: JSON.stringify(newInsp),
+      })
+      localInspections = [res.data, ...localInspections]
+      return res.data
+    } catch {
       localInspections = [newInsp, ...localInspections]
-      return Promise.resolve(newInsp)
+      return newInsp
     }
-    const res = await apiFetch<Inspection>('/api/v1/inspections', {
+  },
+
+  async analyzeImage(inspectionId: string, file: File): Promise<any> {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const res = await apiFetch<any>(`/api/v1/inspections/${inspectionId}/analyze`, {
       method: 'POST',
-      body: JSON.stringify(newInsp),
+      body: formData,
+    })
+    return res.data
+  },
+
+  async preprocessImage(file: File): Promise<any> {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const res = await apiFetch<any>('/api/v1/inspections/preprocess', {
+      method: 'POST',
+      body: formData,
     })
     return res.data
   },
@@ -62,7 +88,13 @@ export const InspectionsService = {
     comments: string,
     reviewer: string
   ): Promise<Inspection> {
-    if (IS_DEMO_MODE) {
+    try {
+      const res = await apiFetch<Inspection>(`/api/v1/inspections/${id}/review`, {
+        method: 'POST',
+        body: JSON.stringify({ reviewStatus, comments, reviewer }),
+      })
+      return res.data
+    } catch {
       localInspections = localInspections.map((i) =>
         i.id === id
           ? {
@@ -75,12 +107,16 @@ export const InspectionsService = {
             }
           : i
       )
-      return Promise.resolve(localInspections.find((i) => i.id === id)!)
+      return localInspections.find((i) => i.id === id)!
     }
-    const res = await apiFetch<Inspection>(`/api/v1/inspections/${id}/review`, {
-      method: 'POST',
-      body: JSON.stringify({ reviewStatus, comments, reviewer }),
-    })
-    return res.data
+  },
+
+  async delete(id: string): Promise<void> {
+    try {
+      await apiFetch(`/api/v1/inspections/${id}`, { method: 'DELETE' })
+    } catch (err) {
+      console.warn('Delete inspection failed on backend:', err)
+    }
+    localInspections = localInspections.filter((i) => i.id !== id)
   },
 }
