@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { DEMO_USERS } from '@/lib/api/mock-data'
 import { User, UserRole } from '@/types'
+import { API_BASE_URL } from '@/lib/api/client'
 
 interface LoginViewProps {
   onLogin: (user: User) => void
@@ -34,10 +35,33 @@ export function LoginView({ onLogin }: LoginViewProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const handleCredentialsSubmit = (e: React.FormEvent) => {
+  const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setIsLoading(true)
+
+    const submittedPassword = password === '••••••••••••' ? 'password123' : password
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: submittedPassword }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (typeof window !== 'undefined' && data.access_token) {
+          localStorage.setItem('infrascan_auth_token', data.access_token)
+        }
+        if (data.user) {
+          setIsLoading(false)
+          onLogin(data.user)
+          return
+        }
+      }
+    } catch (err) {
+      console.warn('Backend login attempt failed, falling back to local session:', err)
+    }
 
     setTimeout(() => {
       setIsLoading(false)
@@ -61,7 +85,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
           lastActive: 'Just now',
         })
       }
-    }, 600)
+    }, 400)
   }
 
   const handleQuickLogin = (user: User) => {

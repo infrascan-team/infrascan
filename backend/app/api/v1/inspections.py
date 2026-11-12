@@ -178,7 +178,7 @@ async def analyze_inspection_image(
         inspection_id=inspection_id,
         infrastructure_type=asset_type,
         asset_importance=asset_importance,
-        confidence_threshold=0.15,
+        confidence_threshold=0.04,
         output_dir=os.path.join(settings.UPLOAD_DIR, "inspections"),
         url_prefix="/uploads/inspections",
     )
